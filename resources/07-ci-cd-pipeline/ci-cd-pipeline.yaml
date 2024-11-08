@@ -19,6 +19,10 @@ spec:
     - Build the container image
 
   params:
+    - name: git_url
+      type: string
+    - name: git_revision
+      type: string
     # Step 1:
     # Define parameter for the Git repository URL and revision
     # This parameter is used to clone the repository
@@ -27,9 +31,40 @@ spec:
     - name: shared-workspace
   tasks:
     # Step 2: Clone the repository
-
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git_url)
+        - name: revision
+          value: $(params.git_revision)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
     # Step 3: Run linting and static code analysis
+    - name: pylint
+      taskRef:
+        name: pylint
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: shared-workspace
 
     # Step 4: Run unit tests
 
     # Step 5: Build the container image
+    - name: build
+      taskRef:
+        name: buildah
+      runAfter:
+        - pylint
+      params:
+        - name: IMAGE
+          value: my-awesome-image
+        - name: SKIP_PUSH
+          value: "true"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
